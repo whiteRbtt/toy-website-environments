@@ -17,10 +17,16 @@ var appServiceAppName = 'toy-website-${resourceNameSuffix}'
 var appServicePlanName = 'toy-website'
 var applicationInsightsName = 'toywebsite'
 var storageAccountName = 'mystorage${resourceNameSuffix}'
+var analyticWorkspaceName = 'myAnalyticsWorkspace-${resourceNameSuffix}'
 
 // Define the SKUs for each component based on the environment type.
 var environmentConfigurationMap = {
   Production: {
+    logAnalytics: {
+      sku: {
+        name: 'PerGB2018'
+      }
+    }
     appServicePlan: {
       sku: {
         name: 'S1'
@@ -29,11 +35,16 @@ var environmentConfigurationMap = {
     }
     storageAccount: {
       sku: {
-        name: 'Standard_LRS'
+        name: 'Standard'
       }
     }
   }
   Test: {
+    logAnalytics: {
+      sku: {
+        name: 'PerGB2018'
+      }
+    }
     appServicePlan: {
       sku: {
         name: 'F1'
@@ -74,6 +85,21 @@ resource appServiceApp 'Microsoft.Web/sites@2021-01-15' = {
   }
 }
 
+resource storageAccount 'Microsoft.Storage/storageAccounts@2021-04-01' = {
+  name: storageAccountName
+  location: location
+  kind: 'StorageV2'
+  sku: environmentConfigurationMap[environmentType].storageAccount.sku
+}
+
+resource workspace 'Microsoft.OperationalInsights/workspaces@2021-12-01-preview' = {
+  name: analyticWorkspaceName
+  location: location
+  properties: {
+    sku: environmentConfigurationMap[environmentType].logAnalytics.sku
+  }
+}
+
 resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
   name: applicationInsightsName
   location: location
@@ -82,14 +108,8 @@ resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
     Application_Type: 'web'
     Request_Source: 'rest'
     Flow_Type: 'Bluefield'
+    WorkspaceResourceId: workspace.id
   }
-}
-
-resource storageAccount 'Microsoft.Storage/storageAccounts@2021-04-01' = {
-  name: storageAccountName
-  location: location
-  kind: 'StorageV2'
-  sku: environmentConfigurationMap[environmentType].storageAccount.sku
 }
 
 output appServiceAppHostName string = appServiceApp.properties.defaultHostName
